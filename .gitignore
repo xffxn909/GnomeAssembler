@@ -1,0 +1,45 @@
+# CMake and build output
+/build/
+/out/
+/cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+compile_commands.json
+
+# Visual Studio and VS Code
+/.vs/
+*.sln
+*.vcxproj*
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+.vscode/
+
+# Compiled binaries and intermediate files
+*.exe
+*.dll
+*.pdb
+*.obj
+*.lib
+*.ilk
+
+# Local sequencing data and generated results
+/data/raw/
+/data/clean/
+/data/reference/
+/data/blast_db/
+/results/
+*.fastq
+*.fq
+*.fasta
+*.fa
+*.fna
+
+# Temporary and operating-system files
+*.tmp
+*.log
+Thumbs.db
+.DS_Store
