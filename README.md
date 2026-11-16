@@ -1,43 +1,43 @@
 # GnomeAssembler
 
-A Windows-focused C++ de novo virus genome assembler based on a de Bruijn graph. It will read quality-scored FASTQ reads, clean them, construct and traverse a graph, verify the resulting assembly, and identify the virus with a locally installed BLAST+ database.
+A Windows-focused C++ de novo virus genome assembler based on a de Bruijn graph. It provides a simple Qt 6 Widgets desktop interface and a command-line mode. It will read quality-scored FASTQ reads, clean them, construct and traverse a graph, verify the resulting assembly, and identify the virus with a locally installed BLAST+ database.
 
 The project name and GitHub repository retain the requested `GnomeAssembler` spelling; the program's biological scope is genome assembly.
 
 ## Project status
 
-The repository foundation and implementation plan are in place. The executable currently builds as a placeholder while the pipeline is implemented in the milestones described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+Milestone 1 provides FASTQ cleaning through the GUI and CLI. Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 ## Technology choices
 
-- C++17 and CMake 3.20 or newer
+- C++17, CMake 3.20 or newer, and Qt 6 Widgets
 - Windows development with Visual Studio Build Tools or Visual Studio
 - FASTQ as the initial input format, preserving per-base quality scores for trimming
 - BLAST+ `blastn` launched by the program to identify the finished assembly against a configured local nucleotide database
 
-## Build the current foundation
+## Build and open the GUI
 
 ```powershell
-cmake -S . -B build
-cmake --build build --config Debug
+cmake -S . -B build -DCMAKE_PREFIX_PATH=C:\Qt\6.12.0\mingw_64
+cmake --build build
 .\build\Debug\gnome_assembler.exe
 ```
 
-For single-configuration generators, the executable may instead be at `build\gnome_assembler.exe`.
+For a MinGW/Ninja single-configuration build, the executable is normally `build\gnome_assembler.exe`. Opening it without arguments shows the FASTQ-cleaning window.
 
-## Intended command shape
+## Clean FASTQ reads from the command line
 
 ```powershell
-gnome_assembler assemble `
+gnome_assembler clean `
   --reads data\sample.fastq `
-  --kmer-size 31 `
   --min-quality 20 `
   --min-read-length 50 `
-  --blast-db data\blast_db\viruses `
   --output results\sample
 ```
 
-The exact command-line interface will be delivered and tested in Milestone 1. Input reads, reference data, BLAST databases, and generated results are intentionally not tracked by Git.
+This writes `sample.cleaned.fastq`, `sample.cleaned.fasta`, and `sample.cleaning-summary.txt`. Input reads, reference data, BLAST databases, and generated results are intentionally not tracked by Git.
+
+In the GUI, **Folder...** accepts an existing writable folder and writes files named `cleaned_reads.cleaned.*` inside it. Selecting an input FASTQ also suggests a `GnomeAssemblerResults` folder beside that input. You may instead type a full output prefix when you want a custom filename.
 
 ## Documentation
 

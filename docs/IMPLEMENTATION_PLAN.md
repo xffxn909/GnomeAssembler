@@ -2,31 +2,40 @@
 
 ## 1. Scope and decisions
 
-This is a Windows-first C++17 command-line application for **de novo assembly of small virus genomes**. It will use a de Bruijn graph and will not use a reference sequence to construct the assembly. BLAST+ is part of the application workflow: after verification, the program will run `blastn` against a user-configured **local** virus database and include the best hit in its report.
+GnomeAssembler is a Windows-first C++17 application for **de novo assembly of small virus genomes**. It has a simple Qt 6 Widgets desktop GUI for normal use and a CLI for reproducible scripted runs. Both interfaces call the same Qt-independent C++ pipeline.
 
-Initial input is standard FASTQ with Phred+33 quality encoding. FASTQ is preferred over FASTA at this stage because it retains the quality scores required for the proposal's cleaning stage. A later FASTA input mode may be added only after the FASTQ pipeline is verified.
+The assembler will use a de Bruijn graph and will not use a reference to construct an assembly. It initially accepts standard FASTQ with Phred+33 qualities. The target is small, single-genome viral data, including circular genomes such as phiX174; it is not a production metagenomic, diploid, or large-eukaryotic assembler.
 
-The initial target is small, single-genome viral data (including circular genomes such as phiX174). It is not intended to be a production assembler for mixed metagenomic, diploid, or large eukaryotic genomes.
+After assembly verification, the program will optionally run local BLAST+ `blastn` against a user-selected preformatted virus database. It never silently downloads a database.
 
-## 2. Deliverables
+## 2. Technology decisions
 
-1. `gnome_assembler.exe`, built with CMake on Windows.
-2. A FASTQ cleaning, k-mer counting, graph construction, assembly, verification, and reporting pipeline.
-3. A BLAST+ integration that writes the assembled contig to FASTA, invokes `blastn`, parses tabular output, and reports the strongest qualified match.
-4. Automated unit and integration tests, including a simulated phiX174-style circular-genome dataset.
-5. Example command lines and an explanation of inputs, outputs, limitations, and reproducibility.
+- C++17, CMake 3.20+, and Qt 6 Widgets.
+- Qt Widgets is selected because it is established, simple to learn, CMake-friendly, and suitable for a clear Windows desktop interface.
+- Core biological and file-processing code must not depend on Qt. GUI and CLI only convert user input to typed options and display the core result.
+- The GUI launches when the executable has no pipeline command. CLI commands remain available for automation.
 
-## 3. Proposed repository layout
+## 3. Deliverables
+
+1. `gnome_assembler.exe`, built with CMake on Windows and Qt 6.
+2. A shared FASTQ cleaning, k-mer, graph, assembly, verification, reporting, and optional BLAST pipeline.
+3. A GUI to select files, adjust supported settings, run the pipeline, and view status, warnings, and output locations.
+4. A CLI that exposes the same pipeline settings and useful exit codes.
+5. Automated unit and integration tests, including a simulated phiX174-style circular dataset.
+6. Documentation for build, GUI, CLI, BLAST setup, limitations, and reproducibility.
+
+## 4. Repository layout
 
 ```text
 GnomeAssembler/
 ├── CMakeLists.txt
 ├── README.md
-├── docs/
-│   └── IMPLEMENTATION_PLAN.md
+├── docs/IMPLEMENTATION_PLAN.md
+├── include/gnome_assembler/       # shared public core interfaces
 ├── src/
 │   ├── main.cpp
-│   ├── cli/
+│   ├── cli/                       # command parsing only
+│   ├── gui/                       # Qt Widgets presentation only
 │   ├── io/
 │   ├── cleaning/
 │   ├── kmer/
@@ -35,130 +44,130 @@ GnomeAssembler/
 │   ├── verification/
 │   ├── blast/
 │   └── reporting/
-├── include/gnome_assembler/
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-├── scripts/
-└── data/                         # ignored: local reads, databases, results
+├── tests/unit/
+├── tests/integration/
+├── tests/fixtures/
+└── data/                          # ignored local reads, databases, results
 ```
 
-## 4. Architecture
+## 5. Architecture
 
-### 4.1 Input and cleaning
+### 5.1 GUI and CLI
 
-- Stream FASTQ records rather than loading the entire file by default.
-- Validate sequence/quality length equality and nucleotide alphabet; report malformed record locations.
-- Remove configured adapter suffixes/prefixes.
-- Trim low-quality ends using a configurable Phred threshold.
-- Drop reads below the configured minimum surviving length.
-- Record input, retained, trimmed, discarded, and base-count statistics.
+- The initial window is intentionally small: FASTQ input picker, output-prefix/folder picker, minimum-quality and minimum-read-length controls, optional exact 5'/3' adapter fields, Run button, and read-only log.
+- The GUI shows plain-language errors and all generated output paths. It never reimplements cleaning or assembly logic.
+- CLI invocation is `gnome_assembler clean --reads INPUT.fastq --output PREFIX [options]`.
+- Milestone 2 moves long-running calls off the GUI thread, disables Run while active, and provides progress/status. This keeps the Milestone 1 design easy to understand while preventing later UI freezes.
 
-### 4.2 K-mers
+### 5.2 Input and cleaning
 
-- Normalize each retained read to uppercase DNA bases.
-- Extract fixed-length k-mers, skipping k-mers with ambiguous bases in the first version.
-- Store counts in `std::unordered_map<std::string, uint32_t>`.
-- Remove k-mers below a configurable abundance threshold before graph creation, reducing isolated sequencing errors.
-- Expose `k` and minimum abundance through the CLI and record them in every report.
+- Stream FASTQ records rather than loading a full file.
+- Validate four-line records, sequence/quality length equality, DNA alphabet, and Phred+33 quality range; include the record number in errors.
+- Normalize retained sequence to uppercase DNA bases.
+- Remove configured exact adapter prefixes/suffixes, trim low-quality 3' ends at a configurable threshold, and discard reads below the configured minimum surviving length.
+- Write cleaned FASTQ, cleaned FASTA, and a deterministic text summary of input, retained, trimmed, discarded, and base counts.
 
-### 4.3 De Bruijn graph
+### 5.3 K-mers and graph
 
-- Represent each retained k-mer as a directed edge from its `(k-1)` prefix to its `(k-1)` suffix.
-- Maintain adjacency lists, per-node in/out degree, and per-edge multiplicity/usage state.
-- Build connected components and flag disconnected graphs, tips, branches, and degree imbalance.
-- Preserve enough edge data to prove traversal coverage during verification.
+- Extract fixed-length k-mers from retained reads, skipping ambiguous-base k-mers initially.
+- Count with `std::unordered_map<std::string, uint32_t>` and discard counts below a configurable abundance threshold.
+- Represent each retained k-mer as a directed edge from `(k-1)` prefix to `(k-1)` suffix. Maintain adjacency, degrees, multiplicity, and edge usage.
+- Identify connected components, tips, branches, degree imbalance, and disconnected graphs.
 
-### 4.4 Assembly
+### 5.4 Assembly
 
-- Identify whether each usable component has Eulerian-path or Eulerian-cycle degree conditions.
-- Traverse valid components with iterative Hierholzer traversal, consuming each retained edge exactly once.
-- Spell contigs from node labels and traversal edges.
-- Treat circular assemblies explicitly: canonicalize a circular sequence only for comparison/reporting, without claiming a biological origin position.
-- Report branch/repeat ambiguity rather than silently claiming uniqueness. Initial behavior is to emit maximal valid contigs and warnings; sophisticated repeat resolution is outside the first release.
+- Check Eulerian path/cycle conditions and traverse valid components with iterative Hierholzer traversal.
+- Spell contigs from traversal edges and prove each retained edge was consumed once.
+- Treat circular contigs explicitly and canonicalize only for comparison/reporting; do not assert a biological start point.
+- Report repeat/branch ambiguity and emit maximal valid contigs rather than falsely claiming uniqueness.
 
-### 4.5 Verification and metrics
+### 5.5 Verification and reporting
 
-- Confirm degree conditions before assembly and that each expected graph edge was consumed exactly once.
-- Count original cleaned reads that occur exactly in a contig or its reverse complement; report coverage rather than falsely treating imperfect/error reads as failures.
-- Calculate contig count, total assembled length, longest contig, N50, covered-read percentage, and ambiguous/repeat warnings.
-- For known test references, compare linear sequences directly and circular sequences modulo rotation and reverse complement.
-- Report contamination signals: unassembled high-abundance components and BLAST hits inconsistent with the leading result.
+- Count cleaned reads that occur exactly in each contig or its reverse complement.
+- Calculate contig count, total length, longest contig, N50, covered-read percentage, edge-use status, and ambiguity warnings.
+- For known fixtures, compare circular sequences modulo rotation and reverse complement.
+- Write human-readable text and machine-readable JSON reports. The GUI displays the concise report and offers an output-folder action.
 
-### 4.6 BLAST+ identification
+### 5.6 BLAST+ identification
 
-- Require `blastn` plus a local, preformatted nucleotide virus database selected with `--blast-db`; do not download databases silently.
-- Write assembled contigs to an output FASTA file.
-- Invoke `blastn` with a safe argument list and tabular output fields covering accession, title, percent identity, alignment length, e-value, bit score, query coverage, and taxonomy fields when the database provides them.
-- Check process exit status and parse the best hit deterministically: strongest bit score, then e-value, identity, and coverage.
-- Produce a clear `not identified` result when BLAST+ is missing, the database is absent, no hit meets configured thresholds, or execution fails. Assembly output remains available in all cases.
+- Require a user-configured local `blastn` executable and local preformatted nucleotide virus database.
+- Write contigs to FASTA, invoke `blastn` with a safe argument list, and parse deterministic tabular output.
+- Select the strongest qualified hit by bit score, then e-value, identity, and coverage.
+- Keep assembly outputs if identification cannot run, and show an explicit `not identified` status.
 
-## 5. Milestones and acceptance criteria
+## 6. Milestones and acceptance criteria
 
-### Milestone 1 — Foundation and FASTQ cleaning
+### Milestone 1 — Foundation, FASTQ cleaning, and simple GUI
 
-- Implement the command-line parser, typed configuration, logging, FASTQ reader, quality conversion, trimming, and filtering.
-- Add unit tests for malformed FASTQ, quality boundaries, adapters, and minimum length.
-- **Acceptance:** a small FASTQ fixture produces a reproducible cleaning summary and cleaned FASTQ/FASTA output.
+- Implement typed configuration, CLI parsing, FASTQ reader, Phred conversion, adapter removal, 3' quality trimming, filtering, output writers, and summary logging.
+- Implement the Qt 6 Widgets cleaning window with the same supported options and result log.
+- Add tests for valid and malformed FASTQ, quality boundaries, adapters, minimum length, and summary statistics.
+- **Acceptance:** a fixture produces reproducible cleaned FASTQ/FASTA and summary through CLI; the GUI selects the same input, invokes the shared pipeline, and visibly reports the same outcome and output paths.
 
 ### Milestone 2 — K-mers and graph construction
 
-- Implement k-mer counting/filtering and graph nodes/edges/degrees.
-- Add deterministic graph dumps for debugging and unit tests for counts, multiplicity, and degree calculations.
-- **Acceptance:** hand-worked read examples produce the exact expected k-mer table and graph.
+- Implement k-mer counting/filtering and graph nodes, edges, multiplicities, and degrees.
+- Add deterministic graph dumps and tests for hand-worked examples.
+- Add k-mer settings, background execution, and progress to the GUI.
+- **Acceptance:** hand-worked reads produce the exact expected k-mer table and graph.
 
 ### Milestone 3 — Traversal and contigs
 
-- Implement iterative Hierholzer traversal and contig spelling.
-- Handle Eulerian paths, cycles, disconnected components, and invalid degree patterns with useful diagnostics.
-- **Acceptance:** synthetic linear and circular datasets reconstruct expected sequences, including equivalent circular rotations.
+- Implement iterative Hierholzer traversal, contig spelling, Euler path/cycle handling, and clear invalid-graph diagnostics.
+- Show contigs and ambiguity warnings in the GUI using the shared report data.
+- **Acceptance:** synthetic linear and circular datasets reconstruct expected sequences, allowing equivalent circular rotations.
 
 ### Milestone 4 — Verification and reporting
 
-- Implement edge-use checks, read/contig coverage, ambiguity warnings, N50, and machine-readable JSON plus human-readable text summaries.
-- Add integration tests using simulated short reads from a known small viral reference, beginning with phiX174.
-- **Acceptance:** the report establishes whether the fixture assembled completely and explains any non-unique result.
+- Implement edge-use checks, read/contig coverage, ambiguity warnings, N50, JSON, and text summaries.
+- Add simulated viral integration tests starting with phiX174.
+- Add a concise GUI report panel and output-folder action.
+- **Acceptance:** the report establishes completeness or explains a non-unique result.
 
 ### Milestone 5 — BLAST+ identification
 
 - Implement executable/database discovery, FASTA output, process invocation, result parsing, thresholds, and failure messages.
-- Test the parser with saved BLAST tabular fixtures and add an optional end-to-end test when a local database is available.
-- **Acceptance:** a known-virus contig produces an auditable identification report containing the selected hit and its alignment metrics.
+- Add GUI selectors for BLAST/database settings and visible identification status.
+- **Acceptance:** a known-virus contig produces an auditable identification report with selected-hit metrics.
 
-### Milestone 6 — Hardening and project submission
+### Milestone 6 — Hardening and submission
 
-- Document installation, local BLAST database setup, data provenance, command examples, limitations, and reproducibility steps.
-- Run tests under Debug and Release builds; assess memory/runtime on the chosen viral dataset.
-- **Acceptance:** a new Windows user can build, run the sample workflow, inspect the verification report, and reproduce the stated result.
+- Document Qt build configuration, GUI/CLI workflow, BLAST setup, data provenance, limitations, and reproducibility.
+- Test Debug and Release builds and assess runtime/memory on the target viral dataset.
+- **Acceptance:** a new Windows user can build, run the sample workflow in either interface, inspect the report, and reproduce the result.
 
-## 6. Test strategy
+## 7. Test strategy
 
 | Layer | Test | Expected result |
 | --- | --- | --- |
-| FASTQ | valid, malformed, and low-quality fixtures | valid reads parsed; invalid records diagnosed; correct trimming |
+| FASTQ | valid, malformed, and low-quality fixtures | valid reads parse; invalid records are diagnosed; trimming is correct |
+| Cleaning | quality threshold, adapters, minimum length, statistics | bases/qualities stay aligned and counts are exact |
+| GUI | manual Milestone 1 smoke test; GUI-to-core test where practical | chosen values reach the shared core and log is readable |
 | K-mers | hand-calculated reads | exact counts and filtering |
 | Graph | linear, cyclic, branching examples | expected degrees and warnings |
 | Traversal | Euler path/cycle and non-Euler graph | complete traversal or explicit failure |
-| Assembly | generated viral reads | sequence matches reference, allowing circular rotation/reverse complement |
-| Verification | omitted edge, duplicate edge, missing reads | check detects each defect |
-| BLAST | saved outfmt-6 results and optional local run | correct top hit/threshold handling |
+| Assembly | generated viral reads | reference match allowing circular rotation/reverse complement |
+| Verification | omitted edge, duplicate edge, missing reads | each defect is detected |
+| BLAST | saved tabular fixtures and optional local run | correct best hit and threshold handling |
 
-## 7. Complexity targets
+## 8. Complexity targets
 
-Let `B` be retained input bases, `K` the number of retained distinct k-mers, and `E` the retained graph-edge count. FASTQ processing and k-mer extraction should be `O(B)` expected time. Hash-map insertion is expected constant time per k-mer. Graph construction is `O(E)`, and Hierholzer traversal is `O(E)`. Memory is dominated by k-mer/graph storage, approximately `O(K + E)` in the initial transparent representation.
+With `B` retained bases, `K` retained distinct k-mers, and `E` retained graph edges: FASTQ processing and k-mer extraction are expected `O(B)`; graph construction and Hierholzer traversal are `O(E)`; memory is initially `O(K + E)`. GUI work must not alter these core targets.
 
-## 8. Risks and controls
+## 9. Risks and controls
 
 | Risk | Control |
 | --- | --- |
-| Low-quality reads introduce false branches | configurable trimming and k-mer abundance filtering; report discarded data |
-| Repeats prevent a unique genome | warn explicitly; preserve contigs and do not overstate correctness |
-| Incorrect `k` fragments or collapses the graph | expose `k`, document trade-offs, and compare selected values in tests |
-| BLAST database is missing/out-of-date | require explicit local path; log database path and failure status |
-| Circular genome start differs from reference | use rotation- and reverse-complement-aware comparison |
-| External tool failure | retain assembly/report outputs and return a clear nonzero status only for the identification stage |
+| Low-quality reads create false branches | configurable trimming/filtering and discarded-data statistics |
+| Repeats prevent a unique genome | warn explicitly and preserve contigs |
+| Incorrect k fragments/collapses graph | expose k and document/test trade-offs |
+| Missing/outdated BLAST database | require explicit local path and log it |
+| Circular start differs from reference | rotation- and reverse-complement-aware comparison |
+| External tool fails | retain assembly/report output and state failure clearly |
+| GUI and CLI diverge | keep all pipeline logic in Qt-independent shared code |
+| GUI freezes on larger inputs | use a worker thread and progress UI from Milestone 2 |
+| Qt is unavailable at build time | document the Qt CMake prefix path and surface CMake's clear configuration error |
 
-## 9. Immediate next task
+## 10. Immediate next task
 
-Implement Milestone 1: define the CLI contract, add the FASTQ record/model types, and write the quality-trimming tests before adding graph code.
+Complete and verify Milestone 1, then implement k-mer counting and graph construction without expanding the GUI beyond the required settings and status/progress support.
