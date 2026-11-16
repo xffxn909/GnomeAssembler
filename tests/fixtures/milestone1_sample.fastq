@@ -1,0 +1,12 @@
+@adapter_read
+AACGTT
++
+IIIIII
+@quality_trimmed_read
+ACGTAC
++
+IIII!!
+@short_read
+ACG
++
+III

@@ -39,6 +39,9 @@ compile_commands.json
 *.fa
 *.fna
 
+# Allow tracked test fixtures
+!tests/fixtures/**
+
 # Temporary and operating-system files
 *.tmp
 *.log
