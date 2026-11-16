@@ -1,4 +1,5 @@
 #include "gnome_assembler/command_line.h"
+#include "gnome_assembler/graph_pipeline.h"
 #include "gnome_assembler/main_window.h"
 #include "gnome_assembler/output_writer.h"
 
@@ -18,6 +19,15 @@ int main(int argc, char* argv[]) {
     }
     if (command.has_cleaning_request) {
         const auto result = gnome::run_cleaning_to_files(command.options);
+        std::cout << result.summary;
+        if (!result.error.empty()) {
+            std::cerr << "Error: " << result.error << '\n';
+            return 1;
+        }
+        return 0;
+    }
+    if (command.has_graph_request) {
+        const auto result = gnome::run_graph_pipeline(command.graph_options);
         std::cout << result.summary;
         if (!result.error.empty()) {
             std::cerr << "Error: " << result.error << '\n';

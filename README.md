@@ -6,7 +6,10 @@ The project name and GitHub repository retain the requested `GnomeAssembler` spe
 
 ## Project status
 
-Milestone 1 provides FASTQ cleaning through the GUI and CLI. Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
+- **Milestone 1**: FASTQ quality trimming, adapter removal, filtering, and summary reporting via GUI and CLI.
+- **Milestone 2**: k-mer counting, abundance filtering, de Bruijn graph construction, deterministic graph dumps, and asynchronous background execution in the GUI.
+
+Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
 ## Technology choices
 
@@ -38,6 +41,18 @@ gnome_assembler clean `
 This writes `sample.cleaned.fastq`, `sample.cleaned.fasta`, and `sample.cleaning-summary.txt`. Input reads, reference data, BLAST databases, and generated results are intentionally not tracked by Git.
 
 In the GUI, **Folder...** accepts an existing writable folder and writes files named `cleaned_reads.cleaned.*` inside it. Selecting an input FASTQ also suggests a `GnomeAssemblerResults` folder beside that input. You may instead type a full output prefix when you want a custom filename.
+
+## Build de Bruijn graph from the command line
+
+```powershell
+gnome_assembler build-graph `
+  --reads data\sample.fastq `
+  --kmer-length 21 `
+  --min-kmer-abundance 2 `
+  --output results\sample
+```
+
+This cleans the input reads, extracts k-mers, filters low-abundance k-mers, constructs the de Bruijn graph, and writes `sample.graph-dump.txt`.
 
 ## Documentation
 
