@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     if (command.has_assembly_request) {
-        const auto result = gnome::run_assembly_pipeline(command.graph_options);
+        const auto result = gnome::run_assembly_pipeline(command.graph_options, command.blast_options);
         std::cout << result.summary;
         if (!result.error.empty()) {
             std::cerr << "Error: " << result.error << '\n';

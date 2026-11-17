@@ -1,6 +1,7 @@
 #include "gnome_assembler/main_window.h"
 
 #include "gnome_assembler/assembly_pipeline.h"
+#include "gnome_assembler/blast_identification.h"
 #include "gnome_assembler/cleaning_options.h"
 #include "gnome_assembler/graph_pipeline.h"
 #include "gnome_assembler/kmer_options.h"
@@ -115,6 +116,25 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     kmer_form->addRow("Min k-mer abundance:", min_kmer_abundance_);
 
     layout->addWidget(kmer_box);
+
+    // ---- Optional BLAST+ identification ----
+    auto* blast_box = new QGroupBox("Optional Local BLAST+ Identification", content);
+    auto* blast_form = new QFormLayout(blast_box);
+    blastn_path_ = new QLineEdit(blast_box);
+    blastn_path_->setPlaceholderText("Path to blastn.exe (leave blank to skip identification)");
+    blast_form->addRow("blastn executable:", blastn_path_);
+    blast_database_path_ = new QLineEdit(blast_box);
+    blast_database_path_->setPlaceholderText("Formatted database prefix (leave blank to skip identification)");
+    blast_form->addRow("Database prefix:", blast_database_path_);
+    minimum_blast_identity_ = new QSpinBox(blast_box);
+    minimum_blast_identity_->setRange(0, 100);
+    minimum_blast_identity_->setValue(70);
+    blast_form->addRow("Min identity (%):", minimum_blast_identity_);
+    minimum_blast_coverage_ = new QSpinBox(blast_box);
+    minimum_blast_coverage_->setRange(0, 100);
+    minimum_blast_coverage_->setValue(50);
+    blast_form->addRow("Min query coverage (%):", minimum_blast_coverage_);
+    layout->addWidget(blast_box);
 
     // ---- Buttons ----
     auto* button_row = new QWidget(content);
@@ -297,7 +317,6 @@ void MainWindow::run_graph_pipeline() {
     options.kmer.kmer_length             = kmer_length_->value();
     options.kmer.min_kmer_abundance      = static_cast<uint32_t>(min_kmer_abundance_->value());
     options.output_prefix                = options.cleaning.output_prefix;
-
     if (options.cleaning.reads_path.empty()) {
         QMessageBox::warning(this, "Missing input", "Please select a FASTQ file.");
         return;
@@ -337,6 +356,11 @@ void MainWindow::run_assembly_pipeline() {
     options.kmer.kmer_length             = kmer_length_->value();
     options.kmer.min_kmer_abundance      = static_cast<uint32_t>(min_kmer_abundance_->value());
     options.output_prefix                = options.cleaning.output_prefix;
+    BlastOptions blast_options;
+    blast_options.executable_path = blastn_path_->text().toStdString();
+    blast_options.database_path = blast_database_path_->text().toStdString();
+    blast_options.minimum_identity = minimum_blast_identity_->value();
+    blast_options.minimum_query_coverage = minimum_blast_coverage_->value();
 
     if (options.cleaning.reads_path.empty()) {
         QMessageBox::warning(this, "Missing input", "Please select a FASTQ file.");
@@ -350,8 +374,8 @@ void MainWindow::run_assembly_pipeline() {
     worker_thread_ = new QThread(this);
     QThread* thread = worker_thread_;
     MainWindow* self = this;
-    connect(thread, &QThread::started, [options, self, thread]() {
-        const AssemblyPipelineResult result = gnome::run_assembly_pipeline(options);
+    connect(thread, &QThread::started, [options, blast_options, self, thread]() {
+        const AssemblyPipelineResult result = gnome::run_assembly_pipeline(options, blast_options);
         const QString summary = QString::fromStdString(result.summary);
         const QString error   = QString::fromStdString(result.error);
         QMetaObject::invokeMethod(self, [self, summary, error]() {

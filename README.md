@@ -10,6 +10,8 @@ The project name and GitHub repository retain the requested `GnomeAssembler` spe
 - **Milestone 2**: k-mer counting, abundance filtering, de Bruijn graph construction, deterministic graph dumps, and asynchronous background execution in the GUI.
 - **Milestone 3**: deterministic iterative Hierholzer traversal, linear and circular contig spelling, explicit invalid-graph diagnostics, contig FASTA output, and GUI assembly results.
 - **Milestone 4**: edge-use and read-to-contig verification, completeness status, N50 metrics, text/JSON assembly reports, and an output-folder action in the GUI.
+- **Milestone 5**: optional local BLAST+ identification with validated paths, deterministic hit ranking, thresholds, and auditable reports.
+- **Milestone 6**: complete build/test/reproducibility documentation, simulated circular-virus integration coverage, and release hardening.
 
 Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -68,6 +70,25 @@ gnome_assembler assemble `
 
 This runs the same cleaning and graph stages, traverses a single valid Eulerian path or cycle, and writes `sample.contigs.fasta`, `sample.assembly-report.txt`, and `sample.assembly-report.json`. The report checks that every retained graph edge was traversed, counts cleaned reads represented by a contig or its reverse complement, and reports contig count, total length, longest contig, N50, coverage, and ambiguity warnings. Circular contigs are labeled as circular and do not imply a biological start base. If the graph is disconnected or has invalid degree balance, the report explains why completeness was not established.
 
+## Optional local BLAST+ identification
+
+Pass a locally installed `blastn` executable and a local preformatted nucleotide database prefix to identify completed contigs. Nothing is downloaded automatically.
+
+```powershell
+gnome_assembler assemble `
+  --reads data\sample.fastq `
+  --output results\sample `
+  --kmer-length 21 `
+  --min-kmer-abundance 2 `
+  --blastn C:\blast\bin\blastn.exe `
+  --blast-db D:\virus_db\viruses `
+  --min-blast-identity 90 `
+  --min-blast-coverage 80
+```
+
+This creates `sample.blast-results.tsv`, `sample.blast-report.txt`, and `sample.blast-report.json`. Identification failures retain the assembly outputs and explicitly report `not identified`.
+
 ## Documentation
 
 - [Complete implementation plan](docs/IMPLEMENTATION_PLAN.md)
+- [Build, GUI, CLI, BLAST+, limitations, and reproducibility guide](docs/USER_GUIDE.md)

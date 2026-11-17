@@ -128,17 +128,21 @@ Implementation notes: traversal uses an iterative, deterministic Hierholzer algo
 
 Implementation notes: verification checks the number of retained graph edges (including multiplicity) against the traversal count, and searches every cleaned read and its reverse complement in the contigs. Circular contigs are searched across their reporting boundary. The pipeline writes deterministic text and JSON reports with completion status, edge-use status, read coverage, contig metrics, N50, and warnings. The GUI log displays the same concise text report and provides an output-folder action.
 
-### Milestone 5 — BLAST+ identification
+### Milestone 5 — BLAST+ identification — complete
 
 - Implement executable/database discovery, FASTA output, process invocation, result parsing, thresholds, and failure messages.
 - Add GUI selectors for BLAST/database settings and visible identification status.
 - **Acceptance:** a known-virus contig produces an auditable identification report with selected-hit metrics.
 
-### Milestone 6 — Hardening and submission
+Implementation notes: `assemble` accepts optional local `--blastn` and `--blast-db` settings plus identity and coverage thresholds. The program validates the executable and formatted database prefix before invoking Windows `blastn` with a fixed argument vector and tabular output format. It retains all assembly outputs on a BLAST failure, reports `not identified`, and writes raw tabular results plus text/JSON identification reports. Saved-tabular parser tests cover thresholding and deterministic best-hit selection.
+
+### Milestone 6 — Hardening and submission — complete
 
 - Document Qt build configuration, GUI/CLI workflow, BLAST setup, data provenance, limitations, and reproducibility.
 - Test Debug and Release builds and assess runtime/memory on the target viral dataset.
 - **Acceptance:** a new Windows user can build, run the sample workflow in either interface, inspect the report, and reproduce the result.
+
+Implementation notes: the user guide documents Qt/CMake builds for Ninja and Visual Studio, CLI/GUI workflows, local BLAST configuration, data provenance, limitations, and reproducibility records. Automated tests cover all core milestones and an end-to-end synthetic circular-virus run that writes contig and verification artifacts. Debug and Release configurations are built and tested as part of the release verification.
 
 ## 7. Test strategy
 
@@ -172,6 +176,6 @@ With `B` retained bases, `K` retained distinct k-mers, and `E` retained graph ed
 | GUI freezes on larger inputs | use a worker thread and progress UI from Milestone 2 |
 | Qt is unavailable at build time | document the Qt CMake prefix path and surface CMake's clear configuration error |
 
-## 10. Immediate next task
+## 10. Project status
 
-Complete and verify Milestone 1, then implement k-mer counting and graph construction without expanding the GUI beyond the required settings and status/progress support.
+All planned milestones are implemented. Future work should be versioned as new requirements rather than changing the completed milestone scope.

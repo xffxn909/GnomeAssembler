@@ -23,6 +23,21 @@ bool is_graph_option(const std::string& arg) {
            arg == "--kmer-length" || arg == "--min-kmer-abundance";
 }
 
+bool is_blast_option(const std::string& arg) {
+    return arg == "--blastn" || arg == "--blast-db" ||
+           arg == "--min-blast-identity" || arg == "--min-blast-coverage";
+}
+
+bool parse_percentage(const std::string& text, double& value) {
+    try {
+        std::size_t consumed = 0;
+        value = std::stod(text, &consumed);
+        return consumed == text.size() && value >= 0.0 && value <= 100.0;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
 bool apply_cleaning_option(const std::string& arg, const std::string& value,
                             CleaningOptions& opts, std::string& error) {
     if (arg == "--reads")          { opts.reads_path = value; return true; }
@@ -84,7 +99,7 @@ ParsedCommand parse_command_line(int argc, char* argv[]) {
         ++index;
         while (index < argc) {
             const std::string arg = argv[index++];
-            if (!is_graph_option(arg)) {
+            if (!is_graph_option(arg) && !(first == "assemble" && is_blast_option(arg))) {
                 command.error = "Unknown option '" + arg + "'.";
                 return command;
             }
@@ -93,7 +108,19 @@ ParsedCommand parse_command_line(int argc, char* argv[]) {
                 return command;
             }
             const std::string value = argv[index++];
-            if (arg == "--kmer-length" || arg == "--min-kmer-abundance") {
+            if (arg == "--blastn") {
+                command.blast_options.executable_path = value;
+            } else if (arg == "--blast-db") {
+                command.blast_options.database_path = value;
+            } else if (arg == "--min-blast-identity" || arg == "--min-blast-coverage") {
+                double percentage = 0.0;
+                if (!parse_percentage(value, percentage)) {
+                    command.error = "Option '" + arg + "' needs a percentage from 0 to 100.";
+                    return command;
+                }
+                if (arg == "--min-blast-identity") command.blast_options.minimum_identity = percentage;
+                else command.blast_options.minimum_query_coverage = percentage;
+            } else if (arg == "--kmer-length" || arg == "--min-kmer-abundance") {
                 int number = 0;
                 if (!parse_nonnegative_integer(value, number) || number < 1) {
                     command.error = "Option '" + arg + "' needs a positive integer.";
@@ -144,7 +171,12 @@ std::string command_help() {
         "  --adapter-suffix DNA       Remove this exact adapter from the 3' end\n\n"
         "Graph options:\n"
         "  --kmer-length NUMBER       k-mer length (default: 21)\n"
-        "  --min-kmer-abundance NUMBER Discard k-mers below this count (default: 2)\n";
+        "  --min-kmer-abundance NUMBER Discard k-mers below this count (default: 2)\n\n"
+        "Optional BLAST+ identification (assemble only):\n"
+        "  --blastn PATH              Local blastn executable\n"
+        "  --blast-db PREFIX          Local formatted nucleotide database prefix\n"
+        "  --min-blast-identity PCT   Minimum identity percentage (default: 70)\n"
+        "  --min-blast-coverage PCT   Minimum query coverage percentage (default: 50)\n";
 }
 
 } // namespace gnome

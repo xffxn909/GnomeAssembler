@@ -39,6 +39,12 @@ private:
     QSpinBox* kmer_length_ = nullptr;
     QSpinBox* min_kmer_abundance_ = nullptr;
 
+    // --- Optional local BLAST+ identification ---
+    QLineEdit* blastn_path_ = nullptr;
+    QLineEdit* blast_database_path_ = nullptr;
+    QSpinBox* minimum_blast_identity_ = nullptr;
+    QSpinBox* minimum_blast_coverage_ = nullptr;
+
     // --- Action controls ---
     QPushButton* clean_button_ = nullptr;
     QPushButton* graph_button_ = nullptr;

@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QPushButton>
+#include <QSpinBox>
 
 #include <iostream>
 
@@ -39,6 +40,10 @@ int main(int argc, char* argv[]) {
     }
     if (!has_open_output_button) {
         std::cerr << "The GUI does not contain the Open Output Folder button.\n";
+        return 1;
+    }
+    if (window.findChildren<QSpinBox*>().size() < 6) {
+        std::cerr << "The GUI does not expose the expected BLAST threshold controls.\n";
         return 1;
     }
 

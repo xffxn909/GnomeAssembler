@@ -25,7 +25,8 @@ std::string format_assembly_summary(const GraphPipelineResult& graph_result,
     return out.str();
 }
 
-AssemblyPipelineResult run_assembly_pipeline(const GraphPipelineOptions& options) {
+AssemblyPipelineResult run_assembly_pipeline(const GraphPipelineOptions& options,
+                                             const BlastOptions& blast_options) {
     AssemblyPipelineResult result;
     result.graph_result = run_graph_pipeline(options);
     if (!result.graph_result.error.empty()) {
@@ -80,6 +81,29 @@ AssemblyPipelineResult run_assembly_pipeline(const GraphPipelineOptions& options
                    << contig.sequence << "\n";
         }
         result.summary += "Contigs FASTA: " + path + "\n";
+
+        result.blast = identify_contigs_with_blast(path, blast_options,
+                                                    prefix.string() + ".blast-results.tsv");
+        if (result.blast.requested) {
+            const std::string blast_text_path = prefix.string() + ".blast-report.txt";
+            const std::string blast_json_path = prefix.string() + ".blast-report.json";
+            std::ofstream blast_text(blast_text_path);
+            std::ofstream blast_json(blast_json_path);
+            if (!blast_text || !blast_json) {
+                result.summary += "BLAST report could not be written.\n";
+            } else {
+                blast_text << format_blast_report_text(result.blast, blast_options);
+                blast_json << format_blast_report_json(result.blast, blast_options);
+                result.summary += format_blast_report_text(result.blast, blast_options);
+                result.summary += "BLAST text report: " + blast_text_path + "\n";
+                result.summary += "BLAST JSON report: " + blast_json_path + "\n";
+            }
+        }
+    } else if (blast_options_requested(blast_options)) {
+        result.blast.requested = true;
+        result.blast.status = "Not identified: an output prefix is required to create contig FASTA for BLAST.";
+        result.blast.error = result.blast.status;
+        result.summary += format_blast_report_text(result.blast, blast_options);
     }
     return result;
 }

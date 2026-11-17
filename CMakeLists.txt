@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(GnomeAssembler
-    VERSION 0.4.0
+    VERSION 1.0.0
     DESCRIPTION "Windows-focused de novo virus genome assembler"
     LANGUAGES CXX)
 
@@ -25,7 +25,8 @@ add_library(gnome_assembler_core
     src/graph/graph_pipeline.cpp
     src/assembly/assembly.cpp
     src/assembly/assembly_pipeline.cpp
-    src/verification/verification.cpp)
+    src/verification/verification.cpp
+    src/blast/blast_identification.cpp)
 
 target_include_directories(gnome_assembler_core PUBLIC include)
 target_compile_features(gnome_assembler_core PUBLIC cxx_std_17)
@@ -88,4 +89,18 @@ if(BUILD_TESTING)
     target_compile_features(gnome_assembler_verification_tests PRIVATE cxx_std_17)
     set_target_properties(gnome_assembler_verification_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
     add_test(NAME verification COMMAND gnome_assembler_verification_tests)
+
+    add_executable(gnome_assembler_blast_tests tests/unit/test_blast.cpp)
+    target_link_libraries(gnome_assembler_blast_tests PRIVATE gnome_assembler_core)
+    target_compile_features(gnome_assembler_blast_tests PRIVATE cxx_std_17)
+    set_target_properties(gnome_assembler_blast_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    add_test(NAME blast COMMAND gnome_assembler_blast_tests)
+
+    add_executable(gnome_assembler_integration_tests tests/integration/test_pipeline.cpp)
+    target_link_libraries(gnome_assembler_integration_tests PRIVATE gnome_assembler_core)
+    target_compile_features(gnome_assembler_integration_tests PRIVATE cxx_std_17)
+    target_compile_definitions(gnome_assembler_integration_tests PRIVATE
+        GNOME_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+    set_target_properties(gnome_assembler_integration_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    add_test(NAME integration_pipeline COMMAND gnome_assembler_integration_tests)
 endif()
