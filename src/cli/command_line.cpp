@@ -78,8 +78,9 @@ ParsedCommand parse_command_line(int argc, char* argv[]) {
         return command;
     }
 
-    if (first == "build-graph") {
-        command.has_graph_request = true;
+    if (first == "build-graph" || first == "assemble") {
+        command.has_graph_request = first == "build-graph";
+        command.has_assembly_request = first == "assemble";
         ++index;
         while (index < argc) {
             const std::string arg = argv[index++];
@@ -116,12 +117,12 @@ ParsedCommand parse_command_line(int argc, char* argv[]) {
             }
         }
         if (command.graph_options.cleaning.reads_path.empty()) {
-            command.error = "--reads is required for 'build-graph'.";
+            command.error = "--reads is required for '" + first + "'.";
         }
         return command;
     }
 
-    command.error = "Expected 'clean', 'build-graph', or no command to open the GUI.";
+    command.error = "Expected 'clean', 'build-graph', 'assemble', or no command to open the GUI.";
     return command;
 }
 
@@ -134,6 +135,8 @@ std::string command_help() {
         "  gnome_assembler clean --reads INPUT.fastq --output PREFIX [options]\n\n"
         "Milestone 2 - build de Bruijn graph:\n"
         "  gnome_assembler build-graph --reads CLEANED.fastq --output PREFIX [options]\n\n"
+        "Milestone 3 - assemble contigs:\n"
+        "  gnome_assembler assemble --reads INPUT.fastq --output PREFIX [options]\n\n"
         "Shared cleaning options:\n"
         "  --min-quality NUMBER       Minimum Phred+33 quality at the 3' end (default: 20)\n"
         "  --min-read-length NUMBER   Discard shorter reads after trimming (default: 50)\n"

@@ -111,11 +111,13 @@ GnomeAssembler/
 - Add k-mer settings, background execution, and progress to the GUI.
 - **Acceptance:** hand-worked reads produce the exact expected k-mer table and graph.
 
-### Milestone 3 — Traversal and contigs
+### Milestone 3 — Traversal and contigs — complete
 
 - Implement iterative Hierholzer traversal, contig spelling, Euler path/cycle handling, and clear invalid-graph diagnostics.
 - Show contigs and ambiguity warnings in the GUI using the shared report data.
 - **Acceptance:** synthetic linear and circular datasets reconstruct expected sequences, allowing equivalent circular rotations.
+
+Implementation notes: traversal uses an iterative, deterministic Hierholzer algorithm; k-mer multiplicity is traversed as parallel edges, so all counted edge occurrences are consumed. A valid cycle is emitted without its duplicated closing `(k-1)` suffix and is explicitly marked circular. Disconnected or non-Eulerian graphs stop with diagnostics rather than an incomplete contig. The CLI command is `assemble`; it writes a contig FASTA alongside the graph dump. The GUI's **Assemble Contigs** button uses the same pipeline and shows contig lengths, topology, and ambiguity warnings in its log.
 
 ### Milestone 4 — Verification and reporting
 

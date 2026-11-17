@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     QApplication application(argc, argv);
     gnome::MainWindow window;
 
-    if (window.windowTitle() != "GnomeAssembler - FASTQ Cleaning & Graph") {
+    if (window.windowTitle() != "GnomeAssembler - FASTQ Cleaning, Graph & Assembly") {
         std::cerr << "The GUI window title is incorrect: "
                   << window.windowTitle().toStdString() << "\n";
         return 1;
@@ -17,9 +17,11 @@ int main(int argc, char* argv[]) {
 
     bool has_clean_button = false;
     bool has_graph_button = false;
+    bool has_assemble_button = false;
     for (const QPushButton* button : window.findChildren<QPushButton*>()) {
         if (button->text() == "Clean FASTQ") has_clean_button = true;
         if (button->text() == "Build Graph") has_graph_button = true;
+        if (button->text() == "Assemble Contigs") has_assemble_button = true;
     }
     if (!has_clean_button) {
         std::cerr << "The GUI does not contain the Clean FASTQ button.\n";
@@ -27,6 +29,10 @@ int main(int argc, char* argv[]) {
     }
     if (!has_graph_button) {
         std::cerr << "The GUI does not contain the Build Graph button.\n";
+        return 1;
+    }
+    if (!has_assemble_button) {
+        std::cerr << "The GUI does not contain the Assemble Contigs button.\n";
         return 1;
     }
 

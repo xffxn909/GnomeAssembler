@@ -13,6 +13,7 @@ struct ParsedCommand {
     GraphPipelineOptions graph_options;
     bool has_cleaning_request = false;
     bool has_graph_request = false;
+    bool has_assembly_request = false;
     bool show_help = false;
     std::string error;
 };

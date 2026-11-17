@@ -1,5 +1,6 @@
 #include "gnome_assembler/main_window.h"
 
+#include "gnome_assembler/assembly_pipeline.h"
 #include "gnome_assembler/cleaning_options.h"
 #include "gnome_assembler/graph_pipeline.h"
 #include "gnome_assembler/kmer_options.h"
@@ -45,7 +46,7 @@ QWidget* path_row(QLineEdit*& field, const QString& button_text, QWidget* parent
 // ---------------------------------------------------------------------------
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle("GnomeAssembler - FASTQ Cleaning & Graph");
+    setWindowTitle("GnomeAssembler - FASTQ Cleaning, Graph & Assembly");
     resize(760, 700);
 
     auto* content = new QWidget(this);
@@ -53,7 +54,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     auto* introduction = new QLabel(
         "GnomeAssembler: clean Phred+33 FASTQ reads and build a de Bruijn graph. "
-        "Choose a file, adjust the filters, then run Cleaning or Build Graph.", content);
+        "Choose a file, adjust the filters, then clean reads, build a graph, or assemble contigs.", content);
     introduction->setWordWrap(true);
     layout->addWidget(introduction);
 
@@ -126,6 +127,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     graph_button_->setToolTip("Run cleaning then k-mer counting and graph construction.");
     button_layout->addWidget(graph_button_);
 
+    assemble_button_ = new QPushButton("Assemble Contigs", button_row);
+    assemble_button_->setToolTip("Run the shared pipeline and traverse a valid Eulerian graph into contigs.");
+    button_layout->addWidget(assemble_button_);
+
     layout->addWidget(button_row);
 
     // ---- Progress bar ----
@@ -151,6 +156,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             this, [this] { run_cleaning(); });
     connect(graph_button_, &QPushButton::clicked,
             this, [this] { run_graph_pipeline(); });
+    connect(assemble_button_, &QPushButton::clicked,
+            this, [this] { run_assembly_pipeline(); });
 }
 
 MainWindow::~MainWindow() {
@@ -190,6 +197,7 @@ void MainWindow::choose_output_folder() {
 void MainWindow::set_running(bool running) {
     clean_button_->setEnabled(!running);
     graph_button_->setEnabled(!running);
+    assemble_button_->setEnabled(!running);
     progress_bar_->setVisible(running);
 }
 
@@ -280,6 +288,46 @@ void MainWindow::run_graph_pipeline() {
     MainWindow* self = this;
     connect(thread, &QThread::started, [options, self, thread]() {
         const GraphPipelineResult result = gnome::run_graph_pipeline(options);
+        const QString summary = QString::fromStdString(result.summary);
+        const QString error   = QString::fromStdString(result.error);
+        QMetaObject::invokeMethod(self, [self, summary, error]() {
+            self->pipeline_finished(summary, error);
+        }, Qt::QueuedConnection);
+        thread->quit();
+    });
+    worker_thread_->start();
+}
+
+// ---------------------------------------------------------------------------
+// Run assembly pipeline (off-thread)
+// ---------------------------------------------------------------------------
+
+void MainWindow::run_assembly_pipeline() {
+    GraphPipelineOptions options;
+    options.cleaning.reads_path          = reads_path_->text().toStdString();
+    options.cleaning.output_prefix       = output_prefix_->text().toStdString();
+    options.cleaning.minimum_quality     = minimum_quality_->value();
+    options.cleaning.minimum_read_length = static_cast<std::size_t>(minimum_length_->value());
+    options.cleaning.adapter_prefix      = adapter_prefix_->text().toStdString();
+    options.cleaning.adapter_suffix      = adapter_suffix_->text().toStdString();
+    options.kmer.kmer_length             = kmer_length_->value();
+    options.kmer.min_kmer_abundance      = static_cast<uint32_t>(min_kmer_abundance_->value());
+    options.output_prefix                = options.cleaning.output_prefix;
+
+    if (options.cleaning.reads_path.empty()) {
+        QMessageBox::warning(this, "Missing input", "Please select a FASTQ file.");
+        return;
+    }
+
+    log_->clear();
+    log_->appendPlainText("Assembling contigs with Eulerian traversal…");
+    set_running(true);
+
+    worker_thread_ = new QThread(this);
+    QThread* thread = worker_thread_;
+    MainWindow* self = this;
+    connect(thread, &QThread::started, [options, self, thread]() {
+        const AssemblyPipelineResult result = gnome::run_assembly_pipeline(options);
         const QString summary = QString::fromStdString(result.summary);
         const QString error   = QString::fromStdString(result.error);
         QMetaObject::invokeMethod(self, [self, summary, error]() {

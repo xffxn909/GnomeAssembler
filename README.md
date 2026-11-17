@@ -8,6 +8,7 @@ The project name and GitHub repository retain the requested `GnomeAssembler` spe
 
 - **Milestone 1**: FASTQ quality trimming, adapter removal, filtering, and summary reporting via GUI and CLI.
 - **Milestone 2**: k-mer counting, abundance filtering, de Bruijn graph construction, deterministic graph dumps, and asynchronous background execution in the GUI.
+- **Milestone 3**: deterministic iterative Hierholzer traversal, linear and circular contig spelling, explicit invalid-graph diagnostics, contig FASTA output, and GUI assembly results.
 
 Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -53,6 +54,18 @@ gnome_assembler build-graph `
 ```
 
 This cleans the input reads, extracts k-mers, filters low-abundance k-mers, constructs the de Bruijn graph, and writes `sample.graph-dump.txt`.
+
+## Assemble contigs from the command line
+
+```powershell
+gnome_assembler assemble `
+  --reads data\sample.fastq `
+  --kmer-length 21 `
+  --min-kmer-abundance 2 `
+  --output results\sample
+```
+
+This runs the same cleaning and graph stages, traverses a single valid Eulerian path or cycle, and writes `sample.contigs.fasta`. Circular contigs are labeled as circular and do not imply a biological start base. If the graph is disconnected or has invalid degree balance, the command exits with a clear diagnostic rather than reporting an incomplete assembly. Branching or repeated-edge graphs receive an ambiguity warning.
 
 ## Documentation
 

@@ -22,6 +22,7 @@ private:
     void choose_output_folder();
     void run_cleaning();
     void run_graph_pipeline();
+    void run_assembly_pipeline();
     void set_running(bool running);
     void pipeline_finished(const QString& summary, const QString& error);
 
@@ -40,6 +41,7 @@ private:
     // --- Action controls ---
     QPushButton* clean_button_ = nullptr;
     QPushButton* graph_button_ = nullptr;
+    QPushButton* assemble_button_ = nullptr;
     QProgressBar* progress_bar_ = nullptr;
     QPlainTextEdit* log_ = nullptr;
 

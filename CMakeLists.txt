@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(GnomeAssembler
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "Windows-focused de novo virus genome assembler"
     LANGUAGES CXX)
 
@@ -22,7 +22,9 @@ add_library(gnome_assembler_core
     src/io/output_writer.cpp
     src/kmer/kmer_counter.cpp
     src/graph/debruijn_graph.cpp
-    src/graph/graph_pipeline.cpp)
+    src/graph/graph_pipeline.cpp
+    src/assembly/assembly.cpp
+    src/assembly/assembly_pipeline.cpp)
 
 target_include_directories(gnome_assembler_core PUBLIC include)
 target_compile_features(gnome_assembler_core PUBLIC cxx_std_17)
@@ -73,4 +75,10 @@ if(BUILD_TESTING)
     target_link_libraries(gnome_assembler_graph_tests PRIVATE gnome_assembler_core)
     target_compile_features(gnome_assembler_graph_tests PRIVATE cxx_std_17)
     add_test(NAME graph COMMAND gnome_assembler_graph_tests)
+
+    add_executable(gnome_assembler_assembly_tests tests/unit/test_assembly.cpp)
+    target_link_libraries(gnome_assembler_assembly_tests PRIVATE gnome_assembler_core)
+    target_compile_features(gnome_assembler_assembly_tests PRIVATE cxx_std_17)
+    set_target_properties(gnome_assembler_assembly_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    add_test(NAME assembly COMMAND gnome_assembler_assembly_tests)
 endif()
