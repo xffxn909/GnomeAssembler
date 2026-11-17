@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(GnomeAssembler
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "Windows-focused de novo virus genome assembler"
     LANGUAGES CXX)
 
@@ -24,7 +24,8 @@ add_library(gnome_assembler_core
     src/graph/debruijn_graph.cpp
     src/graph/graph_pipeline.cpp
     src/assembly/assembly.cpp
-    src/assembly/assembly_pipeline.cpp)
+    src/assembly/assembly_pipeline.cpp
+    src/verification/verification.cpp)
 
 target_include_directories(gnome_assembler_core PUBLIC include)
 target_compile_features(gnome_assembler_core PUBLIC cxx_std_17)
@@ -81,4 +82,10 @@ if(BUILD_TESTING)
     target_compile_features(gnome_assembler_assembly_tests PRIVATE cxx_std_17)
     set_target_properties(gnome_assembler_assembly_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
     add_test(NAME assembly COMMAND gnome_assembler_assembly_tests)
+
+    add_executable(gnome_assembler_verification_tests tests/unit/test_verification.cpp)
+    target_link_libraries(gnome_assembler_verification_tests PRIVATE gnome_assembler_core)
+    target_compile_features(gnome_assembler_verification_tests PRIVATE cxx_std_17)
+    set_target_properties(gnome_assembler_verification_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+    add_test(NAME verification COMMAND gnome_assembler_verification_tests)
 endif()

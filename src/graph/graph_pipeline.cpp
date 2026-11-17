@@ -96,6 +96,7 @@ GraphPipelineResult run_graph_pipeline(const GraphPipelineOptions& options) {
         result.error = "No reads survived cleaning. Try relaxing the quality or length thresholds.";
         return result;
     }
+    result.retained_reads = sequences;
 
     // ----------------------------------------------------------------
     // 3. Build k-mer table and graph.

@@ -18,10 +18,12 @@ int main(int argc, char* argv[]) {
     bool has_clean_button = false;
     bool has_graph_button = false;
     bool has_assemble_button = false;
+    bool has_open_output_button = false;
     for (const QPushButton* button : window.findChildren<QPushButton*>()) {
         if (button->text() == "Clean FASTQ") has_clean_button = true;
         if (button->text() == "Build Graph") has_graph_button = true;
         if (button->text() == "Assemble Contigs") has_assemble_button = true;
+        if (button->text() == "Open Output Folder") has_open_output_button = true;
     }
     if (!has_clean_button) {
         std::cerr << "The GUI does not contain the Clean FASTQ button.\n";
@@ -33,6 +35,10 @@ int main(int argc, char* argv[]) {
     }
     if (!has_assemble_button) {
         std::cerr << "The GUI does not contain the Assemble Contigs button.\n";
+        return 1;
+    }
+    if (!has_open_output_button) {
+        std::cerr << "The GUI does not contain the Open Output Folder button.\n";
         return 1;
     }
 

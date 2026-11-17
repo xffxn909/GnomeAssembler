@@ -9,6 +9,7 @@ The project name and GitHub repository retain the requested `GnomeAssembler` spe
 - **Milestone 1**: FASTQ quality trimming, adapter removal, filtering, and summary reporting via GUI and CLI.
 - **Milestone 2**: k-mer counting, abundance filtering, de Bruijn graph construction, deterministic graph dumps, and asynchronous background execution in the GUI.
 - **Milestone 3**: deterministic iterative Hierholzer traversal, linear and circular contig spelling, explicit invalid-graph diagnostics, contig FASTA output, and GUI assembly results.
+- **Milestone 4**: edge-use and read-to-contig verification, completeness status, N50 metrics, text/JSON assembly reports, and an output-folder action in the GUI.
 
 Later assembly work is described in [the implementation plan](docs/IMPLEMENTATION_PLAN.md).
 
@@ -65,7 +66,7 @@ gnome_assembler assemble `
   --output results\sample
 ```
 
-This runs the same cleaning and graph stages, traverses a single valid Eulerian path or cycle, and writes `sample.contigs.fasta`. Circular contigs are labeled as circular and do not imply a biological start base. If the graph is disconnected or has invalid degree balance, the command exits with a clear diagnostic rather than reporting an incomplete assembly. Branching or repeated-edge graphs receive an ambiguity warning.
+This runs the same cleaning and graph stages, traverses a single valid Eulerian path or cycle, and writes `sample.contigs.fasta`, `sample.assembly-report.txt`, and `sample.assembly-report.json`. The report checks that every retained graph edge was traversed, counts cleaned reads represented by a contig or its reverse complement, and reports contig count, total length, longest contig, N50, coverage, and ambiguity warnings. Circular contigs are labeled as circular and do not imply a biological start base. If the graph is disconnected or has invalid degree balance, the report explains why completeness was not established.
 
 ## Documentation
 

@@ -119,12 +119,14 @@ GnomeAssembler/
 
 Implementation notes: traversal uses an iterative, deterministic Hierholzer algorithm; k-mer multiplicity is traversed as parallel edges, so all counted edge occurrences are consumed. A valid cycle is emitted without its duplicated closing `(k-1)` suffix and is explicitly marked circular. Disconnected or non-Eulerian graphs stop with diagnostics rather than an incomplete contig. The CLI command is `assemble`; it writes a contig FASTA alongside the graph dump. The GUI's **Assemble Contigs** button uses the same pipeline and shows contig lengths, topology, and ambiguity warnings in its log.
 
-### Milestone 4 — Verification and reporting
+### Milestone 4 — Verification and reporting — complete
 
 - Implement edge-use checks, read/contig coverage, ambiguity warnings, N50, JSON, and text summaries.
 - Add simulated viral integration tests starting with phiX174.
 - Add a concise GUI report panel and output-folder action.
 - **Acceptance:** the report establishes completeness or explains a non-unique result.
+
+Implementation notes: verification checks the number of retained graph edges (including multiplicity) against the traversal count, and searches every cleaned read and its reverse complement in the contigs. Circular contigs are searched across their reporting boundary. The pipeline writes deterministic text and JSON reports with completion status, edge-use status, read coverage, contig metrics, N50, and warnings. The GUI log displays the same concise text report and provides an output-folder action.
 
 ### Milestone 5 — BLAST+ identification
 

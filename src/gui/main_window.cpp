@@ -7,6 +7,7 @@
 #include "gnome_assembler/output_writer.h"
 
 #include <QDir>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
@@ -21,6 +22,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QThread>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -131,6 +133,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     assemble_button_->setToolTip("Run the shared pipeline and traverse a valid Eulerian graph into contigs.");
     button_layout->addWidget(assemble_button_);
 
+    open_output_button_ = new QPushButton("Open Output Folder", button_row);
+    open_output_button_->setToolTip("Open the folder containing contigs and assembly reports.");
+    button_layout->addWidget(open_output_button_);
+
     layout->addWidget(button_row);
 
     // ---- Progress bar ----
@@ -158,6 +164,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             this, [this] { run_graph_pipeline(); });
     connect(assemble_button_, &QPushButton::clicked,
             this, [this] { run_assembly_pipeline(); });
+    connect(open_output_button_, &QPushButton::clicked,
+            this, [this] { open_output_folder(); });
 }
 
 MainWindow::~MainWindow() {
@@ -188,6 +196,22 @@ void MainWindow::choose_reads_file() {
 void MainWindow::choose_output_folder() {
     const QString folder = QFileDialog::getExistingDirectory(this, "Select output folder");
     if (!folder.isEmpty()) output_prefix_->setText(folder);
+}
+
+void MainWindow::open_output_folder() {
+    const QString configured = output_prefix_->text();
+    if (configured.isEmpty()) {
+        QMessageBox::information(this, "No output location", "Choose an output folder or prefix first.");
+        return;
+    }
+    QFileInfo output_info(configured);
+    const QString folder = output_info.isDir() ? output_info.absoluteFilePath()
+                                                : output_info.absolutePath();
+    if (!QDir(folder).exists()) {
+        QMessageBox::information(this, "Output folder unavailable", "The selected output folder does not exist yet.");
+        return;
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
 }
 
 // ---------------------------------------------------------------------------

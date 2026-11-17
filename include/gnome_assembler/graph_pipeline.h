@@ -6,6 +6,7 @@
 #include "gnome_assembler/kmer_options.h"
 
 #include <string>
+#include <vector>
 
 namespace gnome {
 
@@ -20,6 +21,7 @@ struct GraphPipelineOptions {
 struct GraphPipelineResult {
     KmerStatistics kmer_stats;
     DeBruijnGraph graph;
+    std::vector<std::string> retained_reads;
     std::string summary;
     std::string error;
 };

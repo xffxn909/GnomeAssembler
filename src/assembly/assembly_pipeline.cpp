@@ -36,6 +36,27 @@ AssemblyPipelineResult run_assembly_pipeline(const GraphPipelineOptions& options
 
     result.assembly = assemble_graph(result.graph_result.graph);
     result.summary = format_assembly_summary(result.graph_result, result.assembly);
+    result.verification = verify_assembly(result.graph_result.graph, result.assembly,
+                                          result.graph_result.retained_reads);
+    result.summary += "\n" + format_verification_text(result.verification);
+
+    if (!options.output_prefix.empty()) {
+        std::filesystem::path prefix(options.output_prefix);
+        std::error_code ec;
+        if (std::filesystem::is_directory(prefix, ec) && !ec) prefix /= "gnome_graph";
+        const std::string text_path = prefix.string() + ".assembly-report.txt";
+        const std::string json_path = prefix.string() + ".assembly-report.json";
+        std::ofstream text_output(text_path);
+        std::ofstream json_output(json_path);
+        if (!text_output || !json_output) {
+            result.error = "Could not create assembly report files beside: " + prefix.string();
+            return result;
+        }
+        text_output << format_verification_text(result.verification);
+        json_output << format_verification_json(result.verification);
+        result.summary += "Text report: " + text_path + "\n";
+        result.summary += "JSON report: " + json_path + "\n";
+    }
     if (!result.assembly.error.empty()) {
         result.error = result.assembly.error;
         return result;

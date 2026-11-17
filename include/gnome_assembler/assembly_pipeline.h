@@ -2,6 +2,7 @@
 
 #include "gnome_assembler/assembly.h"
 #include "gnome_assembler/graph_pipeline.h"
+#include "gnome_assembler/verification.h"
 
 #include <string>
 
@@ -10,6 +11,7 @@ namespace gnome {
 struct AssemblyPipelineResult {
     GraphPipelineResult graph_result;
     AssemblyResult assembly;
+    VerificationReport verification;
     std::string summary;
     std::string error;
 };
